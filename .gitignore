@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 . e n v 
  
- .env
+ .env.env
