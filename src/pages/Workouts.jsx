@@ -61,15 +61,24 @@ const Workouts = () => {
     e.preventDefault();
     if (!newTemplate.name) return;
     
-    await saveCustomWorkout({
-      ...newTemplate,
-      category: 'Custom',
-      description: 'Your custom workout template'
-    });
-    
-    await refreshData();
-    setShowCreateModal(false);
-    setNewTemplate({ name: '', duration: 30, exercises: [] });
+    try {
+      // Ensure duration is a number
+      const templateToSave = {
+        ...newTemplate,
+        duration: parseInt(newTemplate.duration) || 30,
+        category: 'Custom',
+        description: 'Your custom workout template'
+      };
+
+      await saveCustomWorkout(templateToSave);
+      
+      await refreshData();
+      setShowCreateModal(false);
+      setNewTemplate({ name: '', duration: 30, exercises: [] });
+    } catch (err) {
+      console.error('Failed to save custom template:', err);
+      alert('Error saving template: ' + err.message);
+    }
   };
 
   const addExToNewTemplate = () => {
@@ -280,13 +289,16 @@ const Workouts = () => {
                 {newTemplate.exercises.map((ex, i) => (
                   <div key={i} className="flex gap-2 mb-2">
                     <input className="flex-1 bg-surfaceHighlight border border-white/10 rounded-lg p-2" value={ex.name} onChange={e => {
-                      const exes = [...newTemplate.exercises]; exes[i].name = e.target.value; setNewTemplate({...newTemplate, exercises: exes});
+                      const exes = newTemplate.exercises.map((eObj, idx) => idx === i ? { ...eObj, name: e.target.value } : eObj);
+                      setNewTemplate({...newTemplate, exercises: exes});
                     }} placeholder="Name" />
                     <input type="number" className="w-16 bg-surfaceHighlight border border-white/10 rounded-lg p-2 text-center" value={ex.sets} onChange={e => {
-                      const exes = [...newTemplate.exercises]; exes[i].sets = e.target.value; setNewTemplate({...newTemplate, exercises: exes});
+                      const exes = newTemplate.exercises.map((eObj, idx) => idx === i ? { ...eObj, sets: e.target.value } : eObj);
+                      setNewTemplate({...newTemplate, exercises: exes});
                     }} placeholder="Sets" />
                     <input className="w-20 bg-surfaceHighlight border border-white/10 rounded-lg p-2 text-center" value={ex.reps} onChange={e => {
-                      const exes = [...newTemplate.exercises]; exes[i].reps = e.target.value; setNewTemplate({...newTemplate, exercises: exes});
+                      const exes = newTemplate.exercises.map((eObj, idx) => idx === i ? { ...eObj, reps: e.target.value } : eObj);
+                      setNewTemplate({...newTemplate, exercises: exes});
                     }} placeholder="Reps" />
                   </div>
                 ))}
