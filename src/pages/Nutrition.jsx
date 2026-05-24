@@ -28,18 +28,34 @@ const Nutrition = () => {
       }
       setIsSearching(true);
       try {
-        const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=8`);
+        const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(searchQuery)}&pageSize=8&api_key=DEMO_KEY`);
+        
+        if (!res.ok) {
+          if (res.status === 429) {
+            toast.error("USDA API rate limit reached. Please try again later.");
+          }
+          throw new Error(`API Error: ${res.status}`);
+        }
+
         const data = await res.json();
-        const formatted = (data.products || []).filter(p => p.product_name && p.nutriments && p.nutriments['energy-kcal_100g']).map(p => ({
-          id: p._id || p.code,
-          name: p.product_name + (p.brands ? ` (${p.brands})` : ''),
-          servingSize: p.serving_size || '100g',
-          calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
-          protein: Math.round((p.nutriments['proteins_100g'] || 0) * 10) / 10,
-          carbs: Math.round((p.nutriments['carbohydrates_100g'] || 0) * 10) / 10,
-          fats: Math.round((p.nutriments['fat_100g'] || 0) * 10) / 10,
-          source: 'OpenFoodFacts'
-        }));
+        
+        const formatted = (data.foods || []).map(p => {
+          const getNutrient = (name) => {
+            const n = p.foodNutrients?.find(n => n.nutrientName.toLowerCase().includes(name.toLowerCase()));
+            return n ? n.value : 0;
+          };
+
+          return {
+            id: p.fdcId,
+            name: p.description + (p.brandOwner ? ` (${p.brandOwner})` : ''),
+            servingSize: p.servingSize ? `${p.servingSize}${p.servingSizeUnit}` : '100g',
+            calories: Math.round(getNutrient('Energy')),
+            protein: Math.round(getNutrient('Protein') * 10) / 10,
+            carbs: Math.round(getNutrient('Carbohydrate') * 10) / 10,
+            fats: Math.round(getNutrient('Total lipid (fat)') * 10) / 10,
+            source: 'USDA'
+          };
+        });
         
         // Remove duplicates by name
         const unique = formatted.filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
@@ -51,7 +67,7 @@ const Nutrition = () => {
       }
     };
     
-    const debounce = setTimeout(fetchApiFoods, 600);
+    const debounce = setTimeout(fetchApiFoods, 1000);
     return () => clearTimeout(debounce);
   }, [searchQuery]);
 
@@ -164,7 +180,7 @@ const Nutrition = () => {
                 <div>
                   <div className="font-medium flex items-center gap-2">
                     {food.name} 
-                    {food.source === 'OpenFoodFacts' && <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded">Internet</span>}
+                    {food.source === 'USDA' && <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded">USDA Data</span>}
                   </div>
                   <div className="text-xs text-textMuted">{food.servingSize} • {food.calories} kcal</div>
                 </div>
