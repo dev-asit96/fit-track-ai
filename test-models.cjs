@@ -1,6 +1,6 @@
 const https = require('https');
 
-const req = https.get('https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyCXSHbnX-WOQgeKWO4LxWJDYNY13xpvfWc', (res) => {
+const req = https.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.VITE_GEMINI_API_KEY}`, (res) => {
   let body = '';
   res.on('data', d => body += d);
   res.on('end', () => {
