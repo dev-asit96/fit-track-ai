@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import MainLayout from './layouts/MainLayout';
 import { useData } from './context/DataContext';
 
@@ -29,6 +30,22 @@ function App() {
 
   return (
     <>
+      <Toaster 
+        position="top-center" 
+        toastOptions={{
+          style: {
+            background: '#1B2A31',
+            color: '#fff',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <InstallPrompt />
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />

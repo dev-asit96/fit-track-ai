@@ -4,6 +4,7 @@ import templatesData from '../data/workout-templates.json';
 import { Play, Plus, Clock, History, ChevronRight, X, Edit2, Check } from 'lucide-react';
 import { saveWorkout, saveCustomWorkout } from '../utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const Workouts = () => {
   const { workouts, customWorkouts, refreshData } = useData();
@@ -75,9 +76,10 @@ const Workouts = () => {
       await refreshData();
       setShowCreateModal(false);
       setNewTemplate({ name: '', duration: 30, exercises: [] });
+      toast.success('Template saved successfully!');
     } catch (err) {
       console.error('Failed to save custom template:', err);
-      alert('Error saving template: ' + err.message);
+      toast.error('Error saving template: ' + err.message);
     }
   };
 
