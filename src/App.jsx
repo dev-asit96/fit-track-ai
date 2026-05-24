@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 import Account from './pages/Account';
 import Onboarding from './pages/Onboarding';
+import InstallPrompt from './components/InstallPrompt';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useData();
@@ -27,21 +28,24 @@ function App() {
   const { user } = useData();
 
   return (
-    <Routes>
-      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
+    <>
+      <InstallPrompt />
+      <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
       <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
       <Route path="/onboarding" element={user ? <Navigate to="/dashboard" replace /> : <Onboarding />} />
       
-      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/workouts" element={<Workouts />} />
-        <Route path="/nutrition" element={<Nutrition />} />
-        <Route path="/progress" element={<Progress />} />
-        <Route path="/ai-coach" element={<AICoach />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/account" element={<Account />} />
-      </Route>
-    </Routes>
+        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/workouts" element={<Workouts />} />
+          <Route path="/nutrition" element={<Nutrition />} />
+          <Route path="/progress" element={<Progress />} />
+          <Route path="/ai-coach" element={<AICoach />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/account" element={<Account />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
 
