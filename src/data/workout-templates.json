@@ -1,0 +1,55 @@
+[
+  {
+    "id": "tpl-1",
+    "name": "Beginner Full Body",
+    "duration": 20,
+    "category": "Full Body",
+    "description": "A perfect starting point for your fitness journey.",
+    "exercises": [
+      { "name": "Jumping Jacks", "sets": 3, "reps": 15 },
+      { "name": "Squats", "sets": 3, "reps": 10 },
+      { "name": "Pushups (Kneeling)", "sets": 3, "reps": 8 },
+      { "name": "Glute Bridges", "sets": 3, "reps": 12 },
+      { "name": "Plank", "sets": 3, "reps": "30s" }
+    ]
+  },
+  {
+    "id": "tpl-2",
+    "name": "10-Min Fat Burner",
+    "duration": 10,
+    "category": "HIIT",
+    "description": "Short and intense circuit to burn calories fast.",
+    "exercises": [
+      { "name": "Burpees", "sets": 3, "reps": 10 },
+      { "name": "Mountain Climbers", "sets": 3, "reps": 20 },
+      { "name": "High Knees", "sets": 3, "reps": "30s" },
+      { "name": "Jumping Jacks", "sets": 3, "reps": 20 }
+    ]
+  },
+  {
+    "id": "tpl-3",
+    "name": "Abs & Core",
+    "duration": 15,
+    "category": "Abs",
+    "description": "Strengthen your core and tone your midsection.",
+    "exercises": [
+      { "name": "Crunches", "sets": 4, "reps": 15 },
+      { "name": "Leg Raises", "sets": 4, "reps": 12 },
+      { "name": "Plank", "sets": 4, "reps": "45s" },
+      { "name": "Russian Twists", "sets": 4, "reps": 20 }
+    ]
+  },
+  {
+    "id": "tpl-4",
+    "name": "Lower Body Blast",
+    "duration": 25,
+    "category": "Legs",
+    "description": "Focus on legs and glutes for a strong lower body.",
+    "exercises": [
+      { "name": "Squats", "sets": 4, "reps": 15 },
+      { "name": "Lunges", "sets": 4, "reps": 12 },
+      { "name": "Glute Bridges", "sets": 4, "reps": 15 },
+      { "name": "Calf Raises", "sets": 4, "reps": 20 }
+    ]
+  }
+]
