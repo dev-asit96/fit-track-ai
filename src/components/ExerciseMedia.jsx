@@ -73,7 +73,7 @@ const ExerciseMedia = ({ name, className = "w-16 h-16" }) => {
         </div>
       ) : (
         <img 
-          src={imgSrc} 
+          src={`https://wsrv.nl/?url=${encodeURIComponent(imgSrc)}&output=webp&n=-1`} 
           alt={name}
           className={`w-full h-full object-cover transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
           onLoad={() => setLoading(false)}

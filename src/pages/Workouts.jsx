@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import templatesData from '../data/workout-templates.json';
 import { Play, Plus, Clock, History, ChevronRight, X, Edit2, Check } from 'lucide-react';
@@ -16,6 +16,20 @@ const Workouts = () => {
   const [newTemplate, setNewTemplate] = useState({ name: '', duration: 30, exercises: [] });
   const [showAddExModal, setShowAddExModal] = useState(false);
   const [newExName, setNewExName] = useState('');
+  const [restTimer, setRestTimer] = useState(null);
+
+  useEffect(() => {
+    let interval;
+    if (restTimer?.active && restTimer.time > 0) {
+      interval = setInterval(() => {
+        setRestTimer(prev => ({ ...prev, time: prev.time - 1 }));
+      }, 1000);
+    } else if (restTimer?.time === 0) {
+      setRestTimer(null);
+      toast("Rest is over! Time to work.", { icon: "🔔" });
+    }
+    return () => clearInterval(interval);
+  }, [restTimer]);
 
   const allTemplates = [...templatesData, ...(customWorkouts || [])];
   
@@ -23,7 +37,14 @@ const Workouts = () => {
     setActiveWorkout({
       ...template,
       startTime: new Date(),
-      exercises: template.exercises.map(e => ({ ...e, completedSets: 0 }))
+      exercises: template.exercises.map(e => ({ 
+        ...e, 
+        setDetails: Array(parseInt(e.sets) || 3).fill().map(() => ({
+          reps: e.reps || '10',
+          weight: '',
+          completed: false
+        }))
+      }))
     });
     setActiveTab('active');
   };
@@ -51,10 +72,36 @@ const Workouts = () => {
     setActiveWorkout(updated);
   };
 
+  const handleUpdateActiveSet = (exIdx, setIdx, field, value) => {
+    const updated = { ...activeWorkout };
+    updated.exercises[exIdx].setDetails[setIdx][field] = value;
+    setActiveWorkout(updated);
+  };
+
+  const toggleSetComplete = (exIdx, setIdx) => {
+    const updated = { ...activeWorkout };
+    const isCompleted = !updated.exercises[exIdx].setDetails[setIdx].completed;
+    updated.exercises[exIdx].setDetails[setIdx].completed = isCompleted;
+    setActiveWorkout(updated);
+
+    if (isCompleted) {
+      const allSetsDone = updated.exercises[exIdx].setDetails.every(s => s.completed);
+      if (allSetsDone) {
+        setRestTimer({ time: 120, active: true });
+      } else {
+        setRestTimer({ time: 60, active: true });
+      }
+    }
+  };
+
   const addExerciseToActive = () => {
     if (!newExName) return;
-    const updated = { ...activeWorkout };
-    updated.exercises.push({ name: newExName, sets: 3, reps: '10', completedSets: 0 });
+    updated.exercises.push({ 
+      name: newExName, 
+      sets: 3, 
+      reps: '10', 
+      setDetails: Array(3).fill().map(() => ({ reps: '10', weight: '', completed: false }))
+    });
     setActiveWorkout(updated);
     setNewExName('');
     setShowAddExModal(false);
@@ -213,48 +260,95 @@ const Workouts = () => {
               <button onClick={finishWorkout} className="btn-primary !bg-accent hover:!bg-emerald-400">Finish</button>
             </div>
 
-            <div className="space-y-4 mb-6">
+            <div className="space-y-4 mb-6 pb-20">
               {activeWorkout.exercises.map((ex, idx) => (
-                <div key={idx} className="bg-surfaceHighlight p-4 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                  <ExerciseMedia name={ex.name} className="w-16 h-16 md:w-20 md:h-20" />
-                  <div className="flex-1">
-                    <input 
-                      type="text" 
-                      value={ex.name}
-                      onChange={(e) => handleUpdateActiveExercise(idx, 'name', e.target.value)}
-                      className="font-semibold bg-transparent border-b border-transparent focus:border-primary focus:outline-none w-full"
-                    />
-                    <div className="flex items-center gap-2 mt-1 text-sm text-textMuted">
-                      <input 
-                        type="number" 
-                        value={ex.sets}
-                        onChange={(e) => handleUpdateActiveExercise(idx, 'sets', e.target.value)}
-                        className="w-12 bg-surface border border-white/10 rounded px-1 text-center"
-                      /> sets x 
+                <div key={idx} className="bg-surfaceHighlight p-4 rounded-xl flex flex-col gap-4">
+                  <div className="flex sm:flex-row justify-between sm:items-center gap-4 border-b border-white/5 pb-4">
+                    <ExerciseMedia name={ex.name} className="w-16 h-16 md:w-20 md:h-20" />
+                    <div className="flex-1">
                       <input 
                         type="text" 
-                        value={ex.reps}
-                        onChange={(e) => handleUpdateActiveExercise(idx, 'reps', e.target.value)}
-                        className="w-16 bg-surface border border-white/10 rounded px-1 text-center"
+                        value={ex.name}
+                        onChange={(e) => handleUpdateActiveExercise(idx, 'name', e.target.value)}
+                        className="font-semibold text-lg bg-transparent border-b border-transparent focus:border-primary focus:outline-none w-full"
                       />
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleUpdateActiveExercise(idx, 'completedSets', ex.completedSets === ex.sets ? 0 : ex.sets)}
-                    className={`shrink-0 w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${ex.completedSets >= ex.sets ? 'bg-accent border-accent text-white' : 'border-textMuted hover:bg-accent/20'}`}
-                  >
-                    {ex.completedSets >= ex.sets && <Check className="w-5 h-5" />}
-                  </button>
+                  
+                  {/* Per Set Rows */}
+                  <div className="space-y-2">
+                    <div className="flex text-xs text-textMuted px-2">
+                      <div className="w-12 text-center">Set</div>
+                      <div className="flex-1 text-center">Lbs</div>
+                      <div className="flex-1 text-center">Reps</div>
+                      <div className="w-12 text-center">Done</div>
+                    </div>
+                    {ex.setDetails?.map((set, sIdx) => (
+                      <div key={sIdx} className={`flex items-center p-2 rounded-lg transition-colors ${set.completed ? 'bg-accent/10' : 'bg-surface/50 hover:bg-surface'}`}>
+                        <div className="w-12 text-center font-medium text-textMuted">{sIdx + 1}</div>
+                        <div className="flex-1 px-1">
+                          <input 
+                            type="number" 
+                            value={set.weight}
+                            placeholder="-"
+                            onChange={(e) => handleUpdateActiveSet(idx, sIdx, 'weight', e.target.value)}
+                            className="w-full bg-transparent border-b border-white/10 focus:border-primary focus:outline-none text-center py-1"
+                          />
+                        </div>
+                        <div className="flex-1 px-1">
+                          <input 
+                            type="text" 
+                            value={set.reps}
+                            onChange={(e) => handleUpdateActiveSet(idx, sIdx, 'reps', e.target.value)}
+                            className="w-full bg-transparent border-b border-white/10 focus:border-primary focus:outline-none text-center py-1"
+                          />
+                        </div>
+                        <div className="w-12 flex justify-center">
+                          <button 
+                            onClick={() => toggleSetComplete(idx, sIdx)}
+                            className={`shrink-0 w-8 h-8 rounded border flex items-center justify-center transition-colors ${set.completed ? 'bg-accent border-accent text-white' : 'border-textMuted hover:bg-accent/20'}`}
+                          >
+                            {set.completed && <Check className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
             
             <button 
               onClick={() => setShowAddExModal(true)}
-              className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-textMuted hover:bg-surfaceHighlight transition-colors flex items-center justify-center gap-2 font-medium"
+              className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-textMuted hover:bg-surfaceHighlight transition-colors flex items-center justify-center gap-2 font-medium mb-12"
             >
               <Plus className="w-5 h-5" /> Add Exercise
             </button>
+
+            {/* Rest Timer Overlay */}
+            <AnimatePresence>
+              {restTimer && (
+                <motion.div 
+                  initial={{ y: 100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 100, opacity: 0 }}
+                  className="fixed bottom-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[400px] bg-surfaceHighlight border border-accent/30 shadow-2xl rounded-2xl p-4 flex items-center justify-between z-40"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full border-4 border-accent flex items-center justify-center font-bold text-lg">
+                      {restTimer.time}
+                    </div>
+                    <div>
+                      <p className="font-bold text-accent">Rest Time</p>
+                      <p className="text-xs text-textMuted">Catch your breath!</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setRestTimer(null)} className="text-sm font-medium hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg">
+                    Skip
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 
