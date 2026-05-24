@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import foodDb from '../data/food-db.json';
-import { saveMeal, saveCustomFood } from '../utils/storage';
-import { Search, Plus, Apple, CheckCircle2, X } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { saveMeal, saveCustomFood, deleteMeal } from '../utils/storage';
+import { Search, Plus, Apple, CheckCircle2, X, Loader2, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const Nutrition = () => {
   const { meals, customFoods, refreshData } = useData();
@@ -14,12 +15,56 @@ const Nutrition = () => {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [newCustom, setNewCustom] = useState({ name: '', calories: '', protein: '', carbs: '', fats: '', servingSize: '1 serving' });
 
+  const [apiFoods, setApiFoods] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const allFoods = useMemo(() => [...foodDb, ...(customFoods || [])], [customFoods]);
+
+  React.useEffect(() => {
+    const fetchApiFoods = async () => {
+      if (searchQuery.trim().length < 3) {
+        setApiFoods([]);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=8`);
+        const data = await res.json();
+        const formatted = (data.products || []).filter(p => p.product_name && p.nutriments && p.nutriments['energy-kcal_100g']).map(p => ({
+          id: p._id || p.code,
+          name: p.product_name + (p.brands ? ` (${p.brands})` : ''),
+          servingSize: p.serving_size || '100g',
+          calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
+          protein: Math.round((p.nutriments['proteins_100g'] || 0) * 10) / 10,
+          carbs: Math.round((p.nutriments['carbohydrates_100g'] || 0) * 10) / 10,
+          fats: Math.round((p.nutriments['fat_100g'] || 0) * 10) / 10,
+          source: 'OpenFoodFacts'
+        }));
+        
+        // Remove duplicates by name
+        const unique = formatted.filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
+        setApiFoods(unique);
+      } catch (err) {
+        console.error("Error fetching foods", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    const debounce = setTimeout(fetchApiFoods, 600);
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
 
   const filteredFoods = useMemo(() => {
     if (!searchQuery) return [];
-    return allFoods.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [searchQuery, allFoods]);
+    const local = allFoods.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Merge local and API foods, avoid exact name duplicates
+    const localNames = new Set(local.map(l => l.name.toLowerCase()));
+    const filteredApi = apiFoods.filter(a => !localNames.has(a.name.toLowerCase()));
+    
+    return [...local, ...filteredApi];
+  }, [searchQuery, allFoods, apiFoods]);
 
   const handleAddMeal = async () => {
     if (!selectedFood) return;
@@ -39,6 +84,15 @@ const Nutrition = () => {
     setSelectedFood(null);
     setSearchQuery('');
     setServings(1);
+    toast.success('Meal logged successfully!');
+  };
+
+  const handleDeleteMeal = async (id) => {
+    if (confirm('Are you sure you want to delete this meal?')) {
+      await deleteMeal(id);
+      await refreshData();
+      toast.success('Meal deleted');
+    }
   };
 
   const handleCreateCustom = async (e) => {
@@ -89,11 +143,14 @@ const Nutrition = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-textMuted" />
           <input 
             type="text" 
-            placeholder="Search Indian foods, healthy meals, or custom..." 
-            className="w-full bg-surfaceHighlight border border-white/10 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-primary transition-colors"
+            placeholder="Search our database or the internet for foods..." 
+            className="w-full bg-surfaceHighlight border border-white/10 rounded-xl py-3 pl-10 pr-10 focus:outline-none focus:border-primary transition-colors"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {isSearching && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-accent animate-spin" />
+          )}
         </div>
 
         {filteredFoods.length > 0 && !selectedFood && (
@@ -105,7 +162,10 @@ const Nutrition = () => {
                 onClick={() => setSelectedFood(food)}
               >
                 <div>
-                  <div className="font-medium">{food.name}</div>
+                  <div className="font-medium flex items-center gap-2">
+                    {food.name} 
+                    {food.source === 'OpenFoodFacts' && <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded">Internet</span>}
+                  </div>
                   <div className="text-xs text-textMuted">{food.servingSize} • {food.calories} kcal</div>
                 </div>
                 <Plus className="w-5 h-5 text-primary" />
@@ -195,17 +255,23 @@ const Nutrition = () => {
                   <h3 className="font-semibold text-textMuted mb-3">{type}</h3>
                   <div className="space-y-3">
                     {typeMeals.map(m => (
-                      <div key={m.id} className="flex justify-between items-center">
-                        <div>
+                      <div key={m.id} className="flex justify-between items-center bg-surfaceHighlight p-3 rounded-xl border border-white/5">
+                        <div className="flex-1">
                           <p className="font-medium">{m.name}</p>
                           <p className="text-xs text-textMuted">{m.servings} serving(s)</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right mr-4">
                           <p className="font-semibold text-primary">{m.calories} kcal</p>
                           <p className="text-xs text-textMuted">
                             P: {m.protein}g • C: {m.carbs}g • F: {m.fats}g
                           </p>
                         </div>
+                        <button 
+                          onClick={() => handleDeleteMeal(m.id)}
+                          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-textMuted hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>

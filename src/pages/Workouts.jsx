@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import templatesData from '../data/workout-templates.json';
 import { Play, Plus, Clock, History, ChevronRight, X, Edit2, Check } from 'lucide-react';
-import { saveWorkout, saveCustomWorkout } from '../utils/storage';
+import { saveWorkout, saveCustomWorkout, updateCustomWorkout, deleteCustomWorkout } from '../utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import ExerciseMedia from '../components/ExerciseMedia';
 
 const Workouts = () => {
   const { workouts, customWorkouts, refreshData } = useData();
   const [activeTab, setActiveTab] = useState('templates'); // 'templates', 'history', 'active'
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ name: '', duration: 30, exercises: [] });
   const [showAddExModal, setShowAddExModal] = useState(false);
   const [newExName, setNewExName] = useState('');
@@ -63,7 +65,6 @@ const Workouts = () => {
     if (!newTemplate.name) return;
     
     try {
-      // Ensure duration is a number
       const templateToSave = {
         ...newTemplate,
         duration: parseInt(newTemplate.duration) || 30,
@@ -71,12 +72,18 @@ const Workouts = () => {
         description: 'Your custom workout template'
       };
 
-      await saveCustomWorkout(templateToSave);
+      if (isEditing) {
+        await updateCustomWorkout(templateToSave);
+        toast.success('Template updated successfully!');
+      } else {
+        await saveCustomWorkout(templateToSave);
+        toast.success('Template saved successfully!');
+      }
       
       await refreshData();
       setShowCreateModal(false);
       setNewTemplate({ name: '', duration: 30, exercises: [] });
-      toast.success('Template saved successfully!');
+      setIsEditing(false);
     } catch (err) {
       console.error('Failed to save custom template:', err);
       toast.error('Error saving template: ' + err.message);
@@ -90,6 +97,26 @@ const Workouts = () => {
     }));
   };
 
+  const openCreateModal = () => {
+    setIsEditing(false);
+    setNewTemplate({ name: '', duration: 30, exercises: [] });
+    setShowCreateModal(true);
+  };
+
+  const openEditModal = (tpl) => {
+    setIsEditing(true);
+    setNewTemplate(tpl);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    if (confirm('Are you sure you want to delete this custom template?')) {
+      await deleteCustomWorkout(id);
+      await refreshData();
+      toast.success('Template deleted');
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       <header className="mb-6 flex justify-between items-end">
@@ -98,7 +125,7 @@ const Workouts = () => {
           <p className="text-textMuted">Track your home workouts and crush your goals.</p>
         </div>
         {activeTab === 'templates' && (
-          <button onClick={() => setShowCreateModal(true)} className="btn-secondary flex items-center gap-2">
+          <button onClick={openCreateModal} className="btn-secondary flex items-center gap-2">
             <Plus className="w-5 h-5" /> New Template
           </button>
         )}
@@ -143,7 +170,19 @@ const Workouts = () => {
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold">{tpl.name}</h3>
-                    <span className="text-xs bg-white/5 px-2 py-1 rounded-md text-textMuted border border-white/10">{tpl.category}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-white/5 px-2 py-1 rounded-md text-textMuted border border-white/10">{tpl.category}</span>
+                      {tpl.id?.startsWith('custom_') && (
+                        <div className="flex items-center gap-1 ml-2 bg-surfaceHighlight rounded-lg p-1">
+                          <button onClick={() => openEditModal(tpl)} className="p-1 hover:text-primary transition-colors" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteTemplate(tpl.id)} className="p-1 hover:text-red-500 transition-colors" title="Delete">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-textMuted mb-4">{tpl.description}</p>
                   <div className="flex items-center gap-4 text-sm text-textMuted mb-6">
@@ -176,7 +215,8 @@ const Workouts = () => {
 
             <div className="space-y-4 mb-6">
               {activeWorkout.exercises.map((ex, idx) => (
-                <div key={idx} className="bg-surfaceHighlight p-4 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div key={idx} className="bg-surfaceHighlight p-4 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <ExerciseMedia name={ex.name} className="w-16 h-16 md:w-20 md:h-20" />
                   <div className="flex-1">
                     <input 
                       type="text" 
@@ -273,7 +313,7 @@ const Workouts = () => {
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl my-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Create Custom Template</h2>
+              <h2 className="text-xl font-bold">{isEditing ? 'Edit Custom Template' : 'Create Custom Template'}</h2>
               <button onClick={() => setShowCreateModal(false)}><X className="w-6 h-6 text-textMuted" /></button>
             </div>
             <form onSubmit={handleCreateTemplate}>

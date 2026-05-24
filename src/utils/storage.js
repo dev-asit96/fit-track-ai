@@ -58,9 +58,24 @@ export const getCustomWorkouts = async () => getList('customWorkouts');
 
 export const saveCustomWorkout = async (template) => {
   const custom = await getCustomWorkouts();
-  template.id = `custom_${Date.now()}`;
+  template.id = template.id || `custom_${Date.now()}`;
   custom.push(template);
   await saveList('customWorkouts', custom);
+};
+
+export const updateCustomWorkout = async (template) => {
+  const custom = await getCustomWorkouts();
+  const index = custom.findIndex(t => t.id === template.id);
+  if (index !== -1) {
+    custom[index] = template;
+    await saveList('customWorkouts', custom);
+  }
+};
+
+export const deleteCustomWorkout = async (id) => {
+  const custom = await getCustomWorkouts();
+  const filtered = custom.filter(t => t.id !== id);
+  await saveList('customWorkouts', filtered);
 };
 
 export const getCustomFoods = async () => getList('customFoods');
@@ -76,8 +91,14 @@ export const getMeals = async () => getList('meals');
 
 export const saveMeal = async (meal) => {
   const meals = await getMeals();
-  meals.push({ ...meal, id: Date.now().toString(), date: new Date().toISOString() });
+  meals.push({ ...meal, id: meal.id || Date.now().toString(), date: meal.date || new Date().toISOString() });
   await saveList('meals', meals);
+};
+
+export const deleteMeal = async (id) => {
+  const meals = await getMeals();
+  const filtered = meals.filter(m => m.id !== id);
+  await saveList('meals', filtered);
 };
 
 export const getProgress = async () => getList('progress');
